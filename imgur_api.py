@@ -1,7 +1,8 @@
+import base64
+import fire
+import json
 from pymongo import MongoClient
 import requests
-import base64
-import json
 import yaml
 
 
@@ -44,14 +45,14 @@ class Imgur:
         }
         self.url = "https://api.imgur.com/3/image/"
 
-    def get_base64_file(self, path):
+    def get_base64_file(self, path: str):
         """Get image by name and base64 encode it, then return it"""
         file = open(path, 'rb')
         base64_image = base64.b64encode(file.read())
         payload = {'image': base64_image}
         return payload
 
-    def upload(self, path):
+    def upload(self, path: str) -> dict:
         """Upload an image by path, add it to uploaded database
 
         Intake a image path, give it to get_base64_file to encode to base64
@@ -66,13 +67,14 @@ class Imgur:
         if request.status_code == 200:
             data = json.loads(request.text)["data"]
             self.db.uploaded.insert_one(data)
+            return data
 
-    def block(self, _id):
+    def block(self, _id: str):
         """Given an _id, add the name to the blocklist"""
         image = self.db.uploaded.find_one({"id": _id})
         self.db.blocked.insert_one({"id": image["id"]})
 
-    def delete(self, _id):
+    def delete(self, _id: str) -> dict:
         """Check delete key from uploaded images, remove image using request,
         delete from uploaded
 
@@ -87,12 +89,12 @@ class Imgur:
                 url,
                 headers=self.request_headers
             )
-            print(request.text)
             if request.status_code == 200:
                 self.db.deleted.insert_one(image)
                 self.db.uploaded.delete_one({"id": _id})
+            return request.text
 
-    def get_viewable_images(self):
+    def get_viewable_images(self) -> list:
         """Get all the documents in uploaded that do not have a correcsponding
         entry in blocked"""
         images = []
@@ -107,3 +109,33 @@ class Imgur:
         """View all uploaded"""
         for x in self.db.uploaded.find():
             print(x)
+
+
+class ImgurApi(object):
+    def __init__(self):
+        self.imgur = Imgur()
+
+    def upload(self, filename):
+        print(self.imgur.upload(filename))
+
+    def delete(self, id):
+        print(self.imgur.delete(id))
+
+    def block(self, id):
+        print(self.imgur.delete(id))
+
+    def view_all(self):
+        results = self.imgur.get_viewable_images()
+        for result in results:
+            print(result)
+
+    def view(self):
+        self.imgur.view()
+
+
+def main():
+    fire.Fire(ImgurApi)
+
+
+if __name__ == "__main__":
+    main()
