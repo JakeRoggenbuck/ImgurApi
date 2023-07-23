@@ -1,4 +1,5 @@
 # ImgurApi
+Simple Imgur library to interface with the Imgur web API 
 
 ```py
 from main import Imgur
